@@ -7,6 +7,27 @@ import { EventCard } from './event-card';
 
 // Custom header component
 
+interface CurlingEvent extends CalendarEvent {
+    description?: string | undefined;
+    type?: 'practice' | 'matchplay' | 'spiel' | 'championship' | 'other' | undefined;
+    location?: string | undefined;
+    capacity?: number | undefined;
+    transport?: Transport | undefined;
+}
+
+interface Transport {
+  self: string[]; // people not riding with any driver
+  drivers: Driver[];
+}
+
+interface Driver {
+    name: string
+    time: Date
+    location: string
+    capacity: number
+    passengers: string[]
+}
+
 interface HeaderProps {
   label: string;
   onNavigate: (direction: 'PREV' | 'NEXT' | 'TODAY') => void;
@@ -128,3 +149,4 @@ function EventCalendar({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 export { EventCalendar };
+export type { CurlingEvent, Transport, Driver};

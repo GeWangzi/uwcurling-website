@@ -27,7 +27,7 @@ export function Navbar() {
               <Link
                 key={link.name}
                 href={link.href}
-                className={`${pathname === link.href ? 'text-blue-600 font-medium' : 'text-gray-600 hover:text-blue-500'}`}
+                className={`${pathname === link.href ? 'text-red-500 font-medium' : 'text-gray-600 hover:text-red-500'}`}
               >
                 {link.name}
               </Link>

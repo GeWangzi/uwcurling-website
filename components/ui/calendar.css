@@ -1,0 +1,8 @@
+/* calendar.css */
+.rbc-event {
+  background-color: #ef4444 !important;  /* red-500 */
+}
+
+.rbc-event:hover {
+  background-color: #dc2626 !important;  /* darker red on hover */
+}

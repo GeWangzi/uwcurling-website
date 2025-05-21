@@ -11,7 +11,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>
+      <body className="vsc-initialized">
         <AuthProvider>
           <Navbar />
           <main>{children}</main>

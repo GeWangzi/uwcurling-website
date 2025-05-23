@@ -4,28 +4,12 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 import './calendar.css';
 import { useState } from 'react';
 import { EventCard } from './event-card';
-
+import { CurlingEvent } from '@/lib/events';
 // Custom header component
 
-interface CurlingEvent extends CalendarEvent {
-    description?: string | undefined;
-    type?: 'practice' | 'matchplay' | 'spiel' | 'championship' | 'other' | undefined;
-    location?: string | undefined;
-    capacity?: number | undefined;
-    transport?: Transport | undefined;
-}
 
-interface Transport {
-  self: string[]; // people not riding with any driver
-  drivers: Driver[];
-}
-
-interface Driver {
-    name: string
-    time: Date
-    location: string
-    capacity: number
-    passengers: string[]
+interface CalendarProps extends React.ComponentProps<"div"> {
+  eventList: CalendarEvent[];
 }
 
 interface HeaderProps {
@@ -89,28 +73,11 @@ const Event = ({ event }: { event: any }) => {
     );
 };
 
-function EventCalendar({ className, ...props }: React.ComponentProps<"div">) {
+function EventCalendar({ className, eventList, ...props }: CalendarProps) {
     const [selectedEvent, setSelectedEvent] = useState<CalendarEvent|null>(null);
     const [isCardOpen, setIsCardOpen] = useState(false);
 
     const localizer = momentLocalizer(moment);
-    const eventList : CalendarEvent[] = [
-        {
-            title: 'Long Event',
-            start: new Date(2025, 4, 7, 10, 0), // May 7, 2025 at 10:00 AM
-            end: new Date(2025, 4, 10, 12, 0),  // May 10, 2025 at 12:00 PM
-        },
-        {
-            title: 'DTS STARTS',
-            start: new Date(2025, 4, 13, 13, 0, 0), // 1:00 PM
-            end: new Date(2025, 4, 13, 20, 0, 0),   // 8:00 PM
-        },
-        {
-            title: 'DTS ENDS',
-            start: new Date(2025, 4, 19, 18, 0, 0), // 6:00 PM
-            end: new Date(2025, 4, 19, 20, 0, 0),   // 8:00 PM
-        },
-    ];
 
     const handleEventClick = (event: CalendarEvent) => {
         setSelectedEvent(event);
@@ -149,4 +116,3 @@ function EventCalendar({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 export { EventCalendar };
-export type { CurlingEvent, Transport, Driver};

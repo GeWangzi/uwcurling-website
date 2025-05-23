@@ -4,8 +4,18 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { pb } from '@/lib/pocketbase';
 
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: 'member' | 'admin';
+  membership: boolean;
+  isDriver: boolean;
+  practicesLeft: number;
+}
+
 interface AuthContextType {
-  user: any | null;
+  user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
@@ -14,8 +24,25 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+function GetUser(record: any): User | null {
+  if (record != null) {
+    let newUser : User = {
+      id: record.id,
+      email: record.email,
+      name: record.name,
+      role: record.role,
+      membership: record.membership,
+      isDriver: record.is_driver,
+      practicesLeft: record.practices_left,
+    }
+
+    return newUser;
+  }
+  return null;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<any | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
@@ -23,13 +50,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Initialize auth state
     const initializeAuth = () => {
       setIsLoading(true);
-      setUser(pb.authStore.record);
+      setUser(GetUser(pb.authStore.record));
       setIsLoading(false);
     };
 
     // Set up listener
     const removeListener = pb.authStore.onChange((token, record) => {
-      setUser(record);
+      setUser(GetUser(record));
     });
 
     initializeAuth();

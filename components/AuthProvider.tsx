@@ -88,6 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             email,
             password,
             passwordConfirm: password,
+            role: 'member',
             membership: false,
             is_driver: false,
             practices_left: 2,

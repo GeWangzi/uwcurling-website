@@ -16,6 +16,7 @@ interface Transport {
 }
 
 interface Driver {
+    id: string
     name: string
     time: Date
     location: string
@@ -48,6 +49,7 @@ async function GetEventList(): Promise<CurlingEvent[]> {
             if (!driverUser) continue;
 
             const newDriver: Driver = {
+                id: driver.id,
                 name: driverUser.name,
                 time: driver.pickup_time,
                 location: driver.pickup_location,
@@ -124,7 +126,7 @@ async function IsRegisteredFor(eventId: string) {
 }
 
 
-async function RegisterForEvent(eventId: string, driverInfo: string | Driver | null) {
+async function RegisterForEvent(eventId: string, driverInfo: Driver | string | null) {
     try {
         if (!pb.authStore.isValid) {
             throw new Error('Not authenticated');
@@ -135,20 +137,13 @@ async function RegisterForEvent(eventId: string, driverInfo: string | Driver | n
             throw new Error('User not found');
         }
 
-        try {
-            const participantRecord = await pb.collection('participant').getFirstListItem(
-                `event = "${eventId}" && user = "${userId}"`
-            );
-        } catch (err) {
-            console.log("not registered for", eventId)
-        }
-
         // check event capacity
         const event = await pb.collection('events').getOne(eventId);
         if (event.capacity) {
             const participants = await pb.collection('participants').getFullList({
                 filter: `event = "${eventId}"`
             });
+            console.log("participants length: " + participants.length);
             if (participants.length >= event.capacity) {
                 throw new Error('Event is full');
             }
@@ -207,24 +202,20 @@ async function UnregisterForEvent(eventId: string) {
             throw new Error('User not found');
         }
 
-        const participants = await pb.collection('participants').getFullList({
-            filter: `event = "${eventId}" && user = "${userId}"`
-        });
-
-        if (participants.length === 0) {
-            throw new Error('User not registered for this event.');
-        }
-
-        const participant = participants[0];
-
-        await pb.collection('participants').delete(participant.id);
-
-        // if user was a driver, remove the driver record and any associated passengers
-        const driverRecord = await pb.collection('drivers').getFirstListItem(
+        console.log("Looking for participant record to unregister");
+        const participantRecord = await pb.collection('participants').getFirstListItem(
             `event = "${eventId}" && user = "${userId}"`
         );
+        console.log("performing unregister for participant", participantRecord.id);
+        await pb.collection('participants').delete(participantRecord.id);
 
-        if (driverRecord) {
+
+
+        // if user was a driver, remove the driver record and any associated passengers
+        try {
+            const driverRecord = await pb.collection('drivers').getFirstListItem(
+                `event = "${eventId}" && user = "${userId}"`
+            );
             const driverId = driverRecord.id;
 
             const passengerRecords = await pb.collection('participants').getFullList({
@@ -236,7 +227,10 @@ async function UnregisterForEvent(eventId: string) {
             }
 
             await pb.collection('drivers').delete(driverId);
+        } catch (err) {
+            console.log("Not a driver");
         }
+        
 
         return true;
     } catch (err) {

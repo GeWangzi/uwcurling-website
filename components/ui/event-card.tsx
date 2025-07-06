@@ -4,12 +4,18 @@ import {
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { CurlingEvent, RegisterForEvent, UnregisterForEvent, IsRegisteredFor } from "@/lib/events";
+import { CurlingEvent, Driver, RegisterForEvent, UnregisterForEvent, IsRegisteredFor } from "@/lib/events";
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useAuth } from "../AuthProvider";
+import { Calendar } from "@/components/ui/calendar";
+import { Clock2Icon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+import { Calendar as CalendarIcon } from "lucide-react";
 
 interface EventCardProps {
   event: CurlingEvent | null;
@@ -18,13 +24,17 @@ interface EventCardProps {
 }
 
 export function EventCard({ event, isOpen, onClose }: EventCardProps) {
+  const { user } = useAuth();
   const [isDriver, setIsDriver] = useState(false);
   const [pickupLocation, setPickupLocation] = useState('');
   const [capacity, setCapacity] = useState(1);
   const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
   const [isRegistered, setIsRegistered] = useState(false);
+  const [pickupDate, setPickupDate] = useState<Date | undefined>(new Date());
+  const [pickupTime, setPickupTime] = useState("10:30:00");
 
   useEffect(() => {
+    console.log("checking registration");
     const checkRegistration = async () => {
       if (!event) return;
       try {
@@ -43,36 +53,43 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Combine date and time into a single Date object if needed
+    let pickupDateTime: Date | null = null;
+    if (pickupDate && pickupTime) {
+      const [hours, minutes, seconds] = pickupTime.split(":").map(Number);
+      pickupDateTime = new Date(pickupDate);
+      pickupDateTime.setHours(hours, minutes, seconds || 0, 0);
+    }
+
     try {
       if (isDriver) {
-        const driverInfo = {
-          name: "lorem ipusm",
-          time: new Date(),
+        // Pass pickupDateTime as needed to your RegisterForEvent function
+        const driverInfo: Driver = {
+          id: user?.id || "",
+          name: user?.name || "",
+          time: pickupDateTime || new Date(),
           location: pickupLocation,
-          capacity: capacity,
-          passengers: []
+          capacity,
+          passengers: [],
         };
         await RegisterForEvent(event.id, driverInfo);
       } else {
         await RegisterForEvent(event.id, selectedDriver);
       }
-      alert("Successfully registered!");
       setIsRegistered(true);
     } catch (err) {
       console.error(err);
-      alert("Registration failed.");
+      console.log("Registration failed.");
     }
   };
 
   const handleUnregister = async () => {
     try {
-      // You'll need to implement UnregisterForEvent
       await UnregisterForEvent(event.id);
-      alert("Successfully unregistered.");
       setIsRegistered(false);
     } catch (err) {
       console.error(err);
-      alert("Unregistration failed.");
+      console.log("Unregistration failed.");
     }
   };
 
@@ -148,14 +165,16 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
             <>
               {/* Registration Form */}
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="driver"
-                    checked={isDriver}
-                    onCheckedChange={(checked) => setIsDriver(!!checked)}
-                  />
-                  <Label htmlFor="driver">I want to be a driver</Label>
-                </div>
+                {user?.isDriver ? (
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="driver"
+                      checked={isDriver}
+                      onCheckedChange={(checked) => setIsDriver(!!checked)}
+                    />
+                    <Label htmlFor="driver">I want to be a driver</Label>
+                  </div>
+                ) : null}
 
                 {isDriver ? (
                   <div className="space-y-2">
@@ -175,6 +194,43 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
                       onChange={(e) => setCapacity(Number(e.target.value))}
                       required
                     />
+
+                    {/* Date Picker Popover */}
+                    <Label>Pickup Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          data-empty={!pickupDate}
+                          className="data-[empty=true]:text-muted-foreground w-full justify-start text-left font-normal"
+                          type="button"
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {pickupDate ? format(pickupDate, "PPP") : <span>Pick a date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={pickupDate}
+                          onSelect={setPickupDate}
+                        />
+                      </PopoverContent>
+                    </Popover>
+
+                    <Label htmlFor="pickup-time">Pickup Time</Label>
+                    <div className="relative flex w-full items-center gap-2">
+                      <Clock2Icon className="text-muted-foreground pointer-events-none absolute left-2.5 size-4 select-none" />
+                      <Input
+                        id="pickup-time"
+                        type="time"
+                        step="1"
+                        value={pickupTime}
+                        onChange={(e) => setPickupTime(e.target.value)}
+                        className="appearance-none pl-8 [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                        required
+                      />
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -185,7 +241,7 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
                       </SelectTrigger>
                       <SelectContent>
                         {event.transport?.drivers.map((driver, id) => (
-                          <SelectItem key={id} value={driver.name}>
+                          <SelectItem key={id} value={driver.id}>
                             {driver.location} (Driver: {driver.name})
                           </SelectItem>
                         ))}

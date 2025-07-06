@@ -4,9 +4,6 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 import './calendar.css';
 import { useState } from 'react';
 import { EventCard } from './event-card';
-import { CurlingEvent } from '@/lib/events';
-// Custom header component
-
 
 interface CalendarProps extends React.ComponentProps<"div"> {
   eventList: CalendarEvent[];

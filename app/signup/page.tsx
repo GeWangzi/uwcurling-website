@@ -19,19 +19,21 @@ import {
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
-// Form schema
+// Update the form schema to include name
 const formSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 })
 
-export default function LoginPage() {
+export default function SignupPage() {
   const router = useRouter()
-  const { login } = useAuth()
+  const { signUp } = useAuth()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      name: '',
       email: '',
       password: '',
     },
@@ -39,12 +41,12 @@ export default function LoginPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      await login(values.email, values.password)
+      await signUp(values.name, values.email, values.password)
       router.push('/')
     } catch (error) {
       form.setError('root', {
         type: 'manual',
-        message: 'Invalid email or password',
+        message: 'Failed to sign up. Please try again.',
       })
     }
   }
@@ -53,11 +55,24 @@ export default function LoginPage() {
     <div className="flex items-center justify-center min-h-screen">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl">Login</CardTitle>
+          <CardTitle className="text-2xl">Sign Up</CardTitle>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Your name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="email"
@@ -90,7 +105,7 @@ export default function LoginPage() {
                 </p>
               )}
               <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Logging in...' : 'Login'}
+                {form.formState.isSubmitting ? 'Signing up...' : 'Sign Up'}
               </Button>
             </form>
           </Form>

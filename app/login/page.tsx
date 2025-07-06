@@ -94,6 +94,15 @@ export default function LoginPage() {
               </Button>
             </form>
           </Form>
+          <div className="mt-4 text-center text-sm text-muted-foreground">
+            {"Don't have an account? "}
+            <a
+              href="/signup"
+              className="font-medium text-primary hover:underline"
+            >
+              Sign up
+            </a>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -4,6 +4,7 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 import './calendar.css';
 import { useState } from 'react';
 import { EventCard } from './event-card';
+import { CurlingEvent } from '@/lib/events';
 
 interface CalendarProps extends React.ComponentProps<"div"> {
   eventList: CalendarEvent[];
@@ -71,19 +72,19 @@ const Event = ({ event }: { event: any }) => {
 };
 
 function EventCalendar({ className, eventList, ...props }: CalendarProps) {
-    const [selectedEvent, setSelectedEvent] = useState<CalendarEvent|null>(null);
+    const [selectedEvent, setSelectedEvent] = useState<CurlingEvent | null>(null);
     const [isCardOpen, setIsCardOpen] = useState(false);
 
     const localizer = momentLocalizer(moment);
 
-    const handleEventClick = (event: CalendarEvent) => {
-        setSelectedEvent(event);
+    const handleEventClick = (event: CalendarEvent, _e: React.SyntheticEvent<HTMLElement, Event>) => {
+        setSelectedEvent(event as CurlingEvent);
         setIsCardOpen(true);
     };
 
     const closeEvent = () => {
         setIsCardOpen(false);
-    }
+    };
 
     return (
         <div className="h-[600px]">

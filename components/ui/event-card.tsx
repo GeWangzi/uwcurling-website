@@ -35,6 +35,7 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
 
   useEffect(() => {
     console.log("checking registration");
+    console.log("Event:", event);
     const checkRegistration = async () => {
       if (!event) return;
       try {

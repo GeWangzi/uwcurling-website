@@ -5,17 +5,14 @@ import {
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { CurlingEvent, Driver, RegisterForEvent, UnregisterForEvent, IsRegisteredFor } from "@/lib/events";
-import {
-  Select, SelectTrigger, SelectValue, SelectContent, SelectItem
-} from "@/components/ui/select";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "../AuthProvider";
 import { Calendar } from "@/components/ui/calendar";
-import { Clock2Icon } from "lucide-react";
+import { Clock2Icon, Calendar as CalendarIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
 
 interface EventCardProps {
   event: CurlingEvent | null;
@@ -34,8 +31,6 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
   const [pickupTime, setPickupTime] = useState("10:30:00");
 
   useEffect(() => {
-    console.log("checking registration");
-    console.log("Event:", event);
     const checkRegistration = async () => {
       if (!event) return;
       try {
@@ -45,26 +40,31 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
         console.error("Failed to check registration:", err);
       }
     };
-
     checkRegistration();
   }, [event]);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isOpen, onClose]);
 
   if (!isOpen || !event) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Combine date and time into a single Date object if needed
     let pickupDateTime: Date | null = null;
     if (pickupDate && pickupTime) {
       const [hours, minutes, seconds] = pickupTime.split(":").map(Number);
       pickupDateTime = new Date(pickupDate);
       pickupDateTime.setHours(hours, minutes, seconds || 0, 0);
     }
-
     try {
       if (isDriver) {
-        // Pass pickupDateTime as needed to your RegisterForEvent function
         const driverInfo: Driver = {
           id: user?.id || "",
           name: user?.name || "",
@@ -95,8 +95,19 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <Card className="w-[425px] relative mx-4">
+    // Backdrop closes the card when clicked
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      onClick={onClose}
+      aria-hidden={false}
+      role="dialog"
+      aria-modal="true"
+    >
+      {/* Stop click bubbling inside the card */}
+      <Card
+        className="w-[425px] relative mx-4"
+        onClick={(e) => e.stopPropagation()}
+      >
         <CardHeader>
           <div className="flex justify-between">
             <CardTitle className="text-lg">{event.title}</CardTitle>
@@ -112,12 +123,8 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
               viewBox="0 0 24 24"
               stroke="currentColor"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             {event.start &&
               new Date(event.start).toLocaleDateString("en-US", {
@@ -195,7 +202,6 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
                       onChange={(e) => setCapacity(Number(e.target.value))}
                       required
                     />
-
                     {/* Date Picker Popover */}
                     <Label>Pickup Date</Label>
                     <Popover>
@@ -236,43 +242,35 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
                 ) : (
                   <div className="space-y-2">
                     <Label htmlFor="pickup">Pickup Location</Label>
-                    <Select onValueChange={(value) => setSelectedDriver(value)}>
-                      <SelectTrigger id="pickup">
-                        <SelectValue placeholder="Select pickup location" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {event.transport?.drivers.map((driver, id) => (
-                          <SelectItem key={id} value={driver.id}>
-                            {driver.location} (Driver: {driver.name})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {
+                      event.transport?.drivers.length === 0 ?
+                        <CardDescription className="mt-1">No drivers yet!</CardDescription>
+                        :
+                        <Select onValueChange={(value) => setSelectedDriver(value)}>
+                          <SelectTrigger id="pickup">
+                            <SelectValue placeholder="Select pickup location" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {event.transport?.drivers.map((driver, id) => (
+                              <SelectItem key={id} value={driver.id}>
+                                {driver.location} (Driver: {driver.name})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                    }
+
                   </div>
                 )}
-
-                <Button type="submit" className="w-full">
-                  Register
-                </Button>
+                <Button type="submit" className="w-full">Register</Button>
               </form>
             </>
           )}
         </CardContent>
 
         <CardFooter className="flex justify-between">
-          <Button
-            size="sm"
-            className="bg-red-500 hover:bg-red-600"
-            onClick={onClose}
-          >
-            Quit
-          </Button>
           {isRegistered && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleUnregister}
-            >
+            <Button size="sm" variant="outline" onClick={handleUnregister}>
               Unregister
             </Button>
           )}

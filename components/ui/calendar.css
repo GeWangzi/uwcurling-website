@@ -1,8 +1,44 @@
-/* calendar.css */
 .rbc-event {
-  background-color: #ef4444 !important;  /* red-500 */
+  background-color: #ef4444 !important;
+  color: #ffffff !important;
+  border: 1px solid #7f1d1d;
 }
 
 .rbc-event:hover {
-  background-color: #dc2626 !important;  /* darker red on hover */
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+}
+
+.rbc-event .rbc-event-content,
+.rbc-event .rbc-event-label {
+  color: #ffffff !important;
+}
+
+.rbc-off-range-bg {
+  background-color: #18181b !important;
+}
+
+.rbc-off-range,
+.rbc-off-range .rbc-button-link {
+  color: #a1a1aa !important;
+}
+
+.rbc-month-view,
+.rbc-time-view,
+.rbc-agenda-view {
+  background: #0a0a0a;
+  color: #e4e4e7;
+}
+
+/* .rbc-month-view .rbc-header,
+.rbc-month-row + .rbc-month-row,
+.rbc-time-content > * + * {
+  border-color: #27272a !important;
+} */
+
+.rbc-today {
+  background: rgba(239, 68, 68, 0.12) !important;
+}
+.rbc-current-time-indicator {
+  background: #ef4444 !important;
 }

@@ -3,6 +3,46 @@
 
 @custom-variant dark (&:is(.dark *));
 
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: #e4e4e7 !important;
+  caret-color: #e4e4e7;
+  -webkit-box-shadow: 0 0 0px 1000px #0a0a0a inset;
+  box-shadow: 0 0 0px 1000px #0a0a0a inset;
+  border: 1px solid #27272a !important;
+}
+
+input:autofill {
+  background-color: #0a0a0a !important;
+  color: #e4e4e7 !important;
+}
+
+input::placeholder {
+  color: #71717a !important;
+  opacity: 1;
+}
+
+:root { color-scheme: dark; }
+
+::selection { background: rgba(239, 68, 68, 0.45); color: #ffffff; }    /* red-500 @ 45% */
+::-moz-selection { background: rgba(239, 68, 68, 0.45); color: #ffffff; }
+
+input::selection,
+textarea::selection { background: rgba(239, 68, 68, 0.55) !important; color: #ffffff !important; }
+input::-moz-selection,
+textarea::-moz-selection { background: rgba(239, 68, 68, 0.55) !important; color: #ffffff !important; }
+
+/* Ensure autofilled fields also get readable selection */
+input:-webkit-autofill::selection,
+textarea:-webkit-autofill::selection {
+  background: rgba(239, 68, 68, 0.55) !important;
+  color: #ffffff !important;
+}
+
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

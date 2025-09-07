@@ -4,10 +4,23 @@ import { pb } from './pocketbase';
 interface CurlingEvent extends CalendarEvent {
     id: string;
     description: string;
-    type: 'practice' | 'matchplay' | 'spiel' | 'championship' | 'other';
+    type: 'practice' | 'matchplay' | 'spiel' | 'championship' | 'open house' | 'other';
     location: string;
     capacity: number;
     transport: Transport;
+}
+
+type EventType = CurlingEvent["type"];
+
+export interface EventListOptions {
+  types?: EventType[];
+  from?: Date;
+  to?: Date;
+  q?: string;
+  location?: string;
+  upcomingOnly?: boolean;
+  sort?: string;
+  page?: number;
 }
 
 interface Transport {
@@ -24,84 +37,123 @@ interface Driver {
     passengers: string[]
 }
 
-async function GetEventList(): Promise<CurlingEvent[]> {
-    const eventList: CurlingEvent[] = [];
+const esc = (s: string) => s.replace(/'/g, "\\'");
+const toPbDateTime = (d: Date) => {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(
+    d.getHours()
+  )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+};
 
-    const events = await pb.collection('events').getList(1, 50, {
-        sort: '-start_time'
+async function GetEventList(
+  numEvents: number = 50,
+  opts: EventListOptions = {}
+): Promise<CurlingEvent[]> {
+  const {
+    types,
+    from,
+    to,
+    q,
+    location,
+    upcomingOnly,
+    sort,
+    page = 1,
+  } = opts;
+
+  const filterParts: string[] = [];
+
+  if (types?.length) {
+    filterParts.push(
+      "(" + types.map((t) => `type = '${esc(t)}'`).join(" || ") + ")"
+    );
+  }
+
+  const fromDate = from ?? (upcomingOnly ? new Date() : undefined);
+  if (fromDate) filterParts.push(`start_time >= '${toPbDateTime(fromDate)}'`);
+  if (to) filterParts.push(`start_time <= '${toPbDateTime(to)}'`);
+
+  if (q && q.trim()) {
+    const term = esc(q.trim());
+    // PocketBase `~` is case-insensitive "contains"
+    filterParts.push(`(title ~ '${term}' || description ~ '${term}')`);
+  }
+
+  if (location && location.trim()) {
+    filterParts.push(`(location ~ '${esc(location.trim())}')`);
+  }
+
+  const filter = filterParts.join(" && ");
+
+  const events = await pb.collection("events").getList(page, numEvents, {
+    sort: sort ?? "-start_time",
+    ...(filter && { filter }),
+  });
+
+  const eventList: CurlingEvent[] = [];
+
+  for (const event of events.items) {
+    const newTransport: Transport = { self: [], drivers: [] };
+
+    // Drivers (expand user)
+    const drivers = await pb.collection("drivers").getFullList({
+      filter: `event = '${event.id}'`,
+      expand: "user",
     });
 
-    for (let event of events.items) {
-        const newTransport: Transport = {
-            self: [],
-            drivers: [],
-        };
+    for (const driver of drivers) {
+      const driverUser = driver.expand?.user;
+      if (!driverUser) continue;
 
-        // Get all drivers for this event (with user expanded)
-        const drivers = await pb.collection('drivers').getFullList({
-            filter: `event = '${event.id}'`,
-            expand: 'user'
-        });
+      const newDriver: Driver = {
+        id: driver.id,
+        name: driverUser.name,
+        time: driver.pickup_time,
+        location: driver.pickup_location,
+        capacity: driver.capacity,
+        passengers: [],
+      };
 
-        // For each driver, collect their info and passengers
-        for (const driver of drivers) {
-            const driverUser = driver.expand?.user;
-            if (!driverUser) continue;
+      // Passengers for driver
+      const passengers = await pb.collection("participants").getFullList({
+        filter: `driver = '${driver.id}'`,
+        expand: "user",
+      });
 
-            const newDriver: Driver = {
-                id: driver.id,
-                name: driverUser.name,
-                time: driver.pickup_time,
-                location: driver.pickup_location,
-                capacity: driver.capacity,
-                passengers: []
-            };
+      for (const passenger of passengers) {
+        const passengerUser = passenger.expand?.user;
+        if (passengerUser) newDriver.passengers.push(passengerUser.name);
+      }
 
-            // Get all participants for the driver
-            const passengers = await pb.collection('participants').getFullList({
-                filter: `driver = '${driver.id}'`,
-                expand: 'user'
-            });
-
-            for (const passenger of passengers) {
-                const passengerUser = passenger.expand?.user;
-                if (passengerUser) {
-                    newDriver.passengers.push(passengerUser.name);
-                }
-            }
-
-            newTransport.drivers.push(newDriver);
-        }
-
-        // Get participants who are transporting themselves
-        const selfDrivers = await pb.collection('participants').getFullList({
-            filter: `event = '${event.id}' && driver = null`,
-            expand: 'user'
-        });
-
-        for (const p of selfDrivers) {
-            const user = p.expand?.user;
-            if (user) {
-                newTransport.self.push(user.name);
-            }
-        }
-
-        const newEvent: CurlingEvent = {
-            id: event.id,
-            title: event.title,
-            description: event.description,
-            start: event.start_time,
-            end: event.end_time,
-            type: event.type || 'other',
-            location: event.location,
-            capacity: event.capacity,
-            transport: newTransport,
-        };
-        eventList.push(newEvent);
+      newTransport.drivers.push(newDriver);
     }
 
-    // console.log(eventList);
-    return eventList;
+    // Self-transport participants
+    const selfDrivers = await pb.collection("participants").getFullList({
+      filter: `event = '${event.id}' && driver = null`,
+      expand: "user",
+    });
+
+    for (const p of selfDrivers) {
+      const user = p.expand?.user;
+      if (user) newTransport.self.push(user.name);
+    }
+
+    const newEvent: CurlingEvent = {
+      id: event.id,
+      title: event.title,
+      description: event.description,
+      start: event.start_time,
+      end: event.end_time,
+      type: event.type || "other",
+      location: event.location,
+      capacity: event.capacity,
+      transport: newTransport,
+    };
+
+    eventList.push(newEvent);
+  }
+
+  return eventList;
 }
 
 async function IsRegisteredFor(eventId: string) {

@@ -10,11 +10,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="vsc-initialized">
+    <html lang="en" className="h-full bg-zinc-950">
+      <head>
+        <meta name="theme-color" content="#09090b" />
+        <meta name="color-scheme" content="dark" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+      </head>
+      <body className="vsc-initialized min-h-screen bg-zinc-950">
         <AuthProvider>
           <Navbar />
-          <main>{children}</main>
+          <main className="text-white">{children}</main>
         </AuthProvider>
       </body>
     </html>

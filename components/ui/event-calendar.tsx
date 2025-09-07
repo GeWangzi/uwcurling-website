@@ -27,14 +27,14 @@ const CustomHeader = ({ label, onNavigate, view }: HeaderProps) => {
         <div className="flex items-center justify-center mb-2">
             <button
                 onClick={() => onNavigate('PREV')}
-                className="p-2 rounded hover:bg-gray-100"
+                className="p-2 rounded hover:bg-zinc-800"
             >
                 &lt;
             </button>
             <div className="text-lg font-semibold">{label}</div>
             <button
                 onClick={() => onNavigate('NEXT')}
-                className="p-2 rounded hover:bg-gray-100"
+                className="p-2 rounded hover:bg-zinc-800"
             >
                 &gt;
             </button>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { GetEventList, CurlingEvent } from "@/lib/events";
+import { GetEventList, CurlingEvent, LOADING_EVENT } from "@/lib/events";
 import { EventCard } from "@/components/ui/event-card";
 import {
   Calendar as CalendarIcon,
@@ -12,6 +12,7 @@ import {
   Trophy,
   Mail,
   Star,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,20 +27,11 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { IconCurlingRock } from "@/components/CurlingIcon";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function Home() {
   const [email, setEmail] = useState("");
-  const LOADING_EVENT: CurlingEvent = {
-    id: '__loading__',
-    title: 'Searching for events',
-    description: 'Loading...',
-    start: new Date(),
-    end: new Date(),
-    type: 'open house',
-    location: '',
-    capacity: 0,
-    transport: { self: [], drivers: [] },
-  }
+  const { user } = useAuth();
   const [events, setEvents] = useState<CurlingEvent[]>([LOADING_EVENT]);
   const [nextOpenHouse, setNextOpenHouse] = useState<CurlingEvent>(LOADING_EVENT);
   const [selected, setSelected] = useState<CurlingEvent | null>(null);
@@ -47,7 +39,10 @@ export default function Home() {
   useEffect(() => {
     (async () => {
       try {
-        const list = await GetEventList(3);
+        const list = await GetEventList(3, {
+          upcomingOnly: true,
+          sort: "start_time",
+        });
         setEvents(list || []);
         const openHouseList = await GetEventList(1, {
           types: ["open house"],
@@ -87,9 +82,21 @@ export default function Home() {
               </p>
 
               <div className="mt-8 flex flex-wrap gap-3">
-                <Button asChild size="lg" className="bg-red-600 text-white hover:bg-red-500">
-                  <Link href="#join">Join the Club</Link>
-                </Button>
+
+                {user ? (
+                  <div className="inline-flex items-center gap-2 rounded-full border border-red-600/30 bg-red-600/10 px-3 py-1.5 text-sm text-red-200 shadow-sm">
+                    <Sparkles className="h-4 w-4 text-red-400" />
+                    <span>
+                      Welcome back, <span className="font-semibold text-white">{user.name.split(' ')[0]}</span>!
+                    </span>
+                  </div>
+                ) : (
+                  <Button asChild size="lg" className="bg-red-600 text-white hover:bg-red-500">
+                    <Link href="/signup">Join the Club</Link>
+                  </Button>
+
+                )
+                }
                 <Button
                   asChild
                   size="lg"
@@ -192,7 +199,7 @@ export default function Home() {
                 Upcoming Events
               </h2>
               <p className="text-zinc-400 mt-1">
-                Practices, learn-to-curl days, and competitions.
+                Practices, learn-to-curls, and competitions.
               </p>
             </div>
             <Button
@@ -257,7 +264,6 @@ export default function Home() {
               </Card>
             ))}
 
-            {/* Fallback when there are no events */}
             {events.length === 0 && (
               <div className="col-span-full text-zinc-400">
                 No upcoming events—check the{" "}
@@ -270,7 +276,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Event details modal (pre-built) */}
         <EventCard
           event={selected}
           isOpen={!!selected}
@@ -343,11 +348,11 @@ export default function Home() {
             <div>
               <h3 className="font-medium mb-3">Quick Links</h3>
               <ul className="space-y-2 text-sm">
-                {/* <li>
-                  <Link href="#join" className="text-zinc-300 hover:text-white">
+                <li>
+                  <Link href="/membership" className="text-zinc-300 hover:text-white">
                     Membership
                   </Link>
-                </li> */}
+                </li>
                 <li>
                   <Link href="/sponsors" className="text-zinc-300 hover:text-white">
                     Sponsors

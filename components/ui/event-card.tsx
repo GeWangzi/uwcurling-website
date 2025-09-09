@@ -161,7 +161,6 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
 
           <Separator className="bg-zinc-800" />
 
-          {/* If not signed in: show login CTA instead of registration form */}
           {!user ? (
             <div className="space-y-3">
               <p className="text-sm text-zinc-400">

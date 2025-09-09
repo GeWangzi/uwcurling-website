@@ -39,7 +39,7 @@ interface Driver {
 
 export const LOADING_EVENT: CurlingEvent = {
   id: '__loading__',
-  title: 'Searching for events',
+  title: 'Loading events',
   description: 'Loading...',
   start: new Date(),
   end: new Date(),

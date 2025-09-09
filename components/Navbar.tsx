@@ -116,7 +116,7 @@ export function Navbar() {
                   <DropdownMenuSeparator className="bg-zinc-800" />
 
                   {isMembershipPending ? (
-                    <DropdownMenuItem disabled className="pointer-events-none focus:bg-transparent">
+                    <DropdownMenuItem className="pointer-events-none">
                       <div className="flex w-full items-center justify-between">
                         <span className="inline-flex items-center gap-2 text-amber-400">
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -135,9 +135,9 @@ export function Navbar() {
                       </Link>
                     </DropdownMenuItem>
                   ) : (
-                    <DropdownMenuItem disabled className="pointer-events-none focus:bg-transparent">
+                    <DropdownMenuItem className="pointer-events-none">
                       <div className="flex w-full items-center justify-between">
-                        <span className="inline-flex items-center gap-2 text-red-400">
+                        <span className="inline-flex items-center gap-2">
                           <Crown className="h-4 w-4" />
                           Club Member
                         </span>

@@ -51,10 +51,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Initialize auth state
-    const initializeAuth = () => {
+    const initializeAuth = async () => {
       setIsLoading(true);
-      setUser(GetUser(pb.authStore.record));
-      setIsLoading(false);
+      if (pb.authStore.record) {
+        try {
+          await refreshUser();
+        } catch (e) {
+          console.error('initial refresh failed', e);
+        } finally {
+          setIsLoading(false);
+        }
+      }
     };
 
     // Set up listener

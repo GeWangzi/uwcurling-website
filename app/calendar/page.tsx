@@ -15,7 +15,6 @@ export default function CalendarPage() {
   const [sideList, setSideList] = useState<CurlingEvent[]>([LOADING_EVENT]);
   const [showingAll, setShowingAll] = useState(false);
 
-  const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<CurlingEvent | null>(null);
 
   useEffect(() => {
@@ -34,7 +33,6 @@ export default function CalendarPage() {
       } catch (error) {
         console.error("Failed to load events:", error);
       } finally {
-        setLoading(false);
       }
     })();
   }, []);
@@ -58,9 +56,9 @@ export default function CalendarPage() {
         <div>
           <div
             className="relative h-[600px] rounded-lg overflow-hidden shadow-lg border border-zinc-800 bg-zinc-900/40"
-            aria-busy={loading}
+            aria-busy={events.length==0}
           >
-            {loading && (
+            {events.length==0 && (
               <div className="absolute inset-0 z-10 grid place-items-center bg-zinc-950/60 backdrop-blur-sm">
                 <div className="flex items-center gap-3 text-zinc-300 text-sm" aria-live="polite">
                   <Loader2 className="h-4 w-4 animate-spin text-red-500" />
@@ -86,8 +84,7 @@ export default function CalendarPage() {
           </div>
 
           <div className="max-h-[600px] overflow-y-auto divide-y divide-zinc-800">
-            {loading ? (
-              // Skeleton list
+            {events.length==0 ? (
               <div className="p-4 space-y-4 animate-pulse">
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="space-y-2">

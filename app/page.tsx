@@ -24,8 +24,16 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Separator } from "@/components/ui/separator";
 import { IconCurlingRock } from "@/components/CurlingIcon";
+import Autoplay from "embla-carousel-autoplay";
+
+const images = [
+  "https://placekitten.com/800/400",
+  "https://placekitten.com/801/400",
+  "https://placekitten.com/802/400",
+]
 
 export default function Home() {
   const [email, setEmail] = useState("");
@@ -278,6 +286,38 @@ export default function Home() {
         />
       </section>
 
+      <Separator className="bg-zinc-800" />
+
+ <section id="carousel" className="py-16 sm:py-20 bg-zinc-950/60">
+      <div className="flex justify-center">
+        <Carousel
+          className="w-full max-w-2xl"
+          plugins={[
+            Autoplay({ delay: 3500 }),
+          ]}
+        >
+          <CarouselContent>
+            {images.map((src, index) => (
+              <CarouselItem key={index}>
+                <div className="p-1">
+                  <Card>
+                    <CardContent className="flex items-center justify-center p-0">
+                      <img
+                        src={src}
+                        alt={`Slide ${index + 1}`}
+                        className="w-full h-auto rounded-md object-cover"
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+          <CarouselPrevious />
+          <CarouselNext />
+        </Carousel>
+      </div>
+    </section>
 
       {/* Join */}
       {/* <section id="join" className="py-16 sm:py-20">

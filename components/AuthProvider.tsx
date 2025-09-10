@@ -88,7 +88,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      console.log('Logging in with:', { email, password });
       await pb.collection('users').authWithPassword(email, password);
       router.push('/');
     } finally {

@@ -23,7 +23,6 @@ export default function CalendarPage() {
 
       if (focusId) {
         const fresh = eventList.find(e => e.id === focusId) || null;
-        console.log("fresh", fresh)
         if (fresh) setSelected(fresh);
       }
     } catch (error) {

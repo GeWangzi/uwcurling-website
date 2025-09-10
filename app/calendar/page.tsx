@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon, MapPin, Loader2 } from "lucide-react";
 
@@ -14,36 +14,38 @@ export default function CalendarPage() {
   const [upcoming, setUpcoming] = useState<CurlingEvent[]>([LOADING_EVENT]);
   const [sideList, setSideList] = useState<CurlingEvent[]>([LOADING_EVENT]);
   const [showingAll, setShowingAll] = useState(false);
-
   const [selected, setSelected] = useState<CurlingEvent | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const eventList = await GetEventList();
-        setEvents(eventList);
+  const reloadEvents = useCallback(async (focusId?: string) => {
+    try {
+      const eventList = await GetEventList();
+      setEvents(eventList);
 
-        const upcomingList = await GetEventList(8, {
-          upcomingOnly: true,
-          sort: "start_time",
-        });
-        setUpcoming(upcomingList);
-        setSideList(upcomingList);
-        setShowingAll(false);
-      } catch (error) {
-        console.error("Failed to load events:", error);
-      } finally {
+      if (focusId) {
+        const fresh = eventList.find(e => e.id === focusId) || null;
+        console.log("fresh", fresh)
+        if (fresh) setSelected(fresh);
       }
-    })();
+    } catch (error) {
+      console.error("Failed to load events:", error);
+    }
   }, []);
+
+  useEffect(() => {
+    const fetchUpcoming = async () => {
+      const upcomingList = await GetEventList(8, { upcomingOnly: true, sort: "start_time" });
+      setUpcoming(upcomingList);
+      setSideList(upcomingList);
+      reloadEvents();
+    };
+    fetchUpcoming();
+  }, [reloadEvents]);
 
   const toggleSideList = () => {
     if (showingAll) {
-      // Switch back to upcoming
       setSideList(upcoming);
       setShowingAll(false);
     } else {
-      // Show full regular events list (all upcoming)
       setSideList(events);
       setShowingAll(true);
     }
@@ -56,9 +58,9 @@ export default function CalendarPage() {
         <div>
           <div
             className="relative h-[600px] rounded-lg overflow-hidden shadow-lg border border-zinc-800 bg-zinc-900/40"
-            aria-busy={events.length==0}
+            aria-busy={events.length == 0}
           >
-            {events.length==0 && (
+            {events.length == 0 && (
               <div className="absolute inset-0 z-10 grid place-items-center bg-zinc-950/60 backdrop-blur-sm">
                 <div className="flex items-center gap-3 text-zinc-300 text-sm" aria-live="polite">
                   <Loader2 className="h-4 w-4 animate-spin text-red-500" />
@@ -66,7 +68,7 @@ export default function CalendarPage() {
                 </div>
               </div>
             )}
-            <EventCalendar eventList={events} />
+            <EventCalendar eventList={events} onSelectEvent={(evt)=>setSelected(evt)}/>
           </div>
         </div>
 
@@ -84,7 +86,7 @@ export default function CalendarPage() {
           </div>
 
           <div className="max-h-[600px] overflow-y-auto divide-y divide-zinc-800">
-            {events.length==0 ? (
+            {events.length == 0 ? (
               <div className="p-4 space-y-4 animate-pulse">
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="space-y-2">
@@ -145,6 +147,7 @@ export default function CalendarPage() {
         event={selected}
         isOpen={!!selected}
         onClose={() => setSelected(null)}
+        onUpdate={reloadEvents}
       />
     </div>
   );

@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "../AuthProvider";
 import { Calendar as DatePicker } from "@/components/ui/calendar";
-import { Clock2Icon, Calendar as CalendarIcon, MapPin } from "lucide-react";
+import { Clock2Icon, Calendar as CalendarIcon, MapPin, Users } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { useRouter } from "next/navigation";
@@ -28,9 +28,10 @@ interface EventCardProps {
   event: CurlingEvent | null;
   isOpen: boolean;
   onClose: () => void;
+  onUpdate: (eventId: string) => Promise<void> | void;
 }
 
-export function EventCard({ event, isOpen, onClose }: EventCardProps) {
+export function EventCard({ event, isOpen, onClose, onUpdate }: EventCardProps) {
   const { user } = useAuth();
   const router = useRouter();
 
@@ -42,7 +43,7 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
   const [pickupDate, setPickupDate] = useState<Date | undefined>(new Date());
   const [pickupTime, setPickupTime] = useState("10:30:00");
 
-  // Only check registration if user is signed in
+  // Check registration only if signed in
   useEffect(() => {
     if (!event || !user) return;
     (async () => {
@@ -55,7 +56,7 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
     })();
   }, [event, user]);
 
-  // Close on Escape
+  // Close on ESC
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -65,6 +66,25 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
 
   if (!isOpen || !event) return null;
 
+  // ---- Derived counts for capacities ----
+  const driverCount = event.transport?.drivers?.length ?? 0;
+  const filteredPassengerCounts = event.transport?.drivers?.map(d =>
+    d.passengers.filter(p => p !== d.name).length
+  ) ?? [];
+
+  const totalPassengersExcludingDrivers = filteredPassengerCounts.reduce((a, b) => a + b, 0);
+  const selfCount = event.transport?.self?.length ?? 0;
+
+  // Count drivers themselves as attendees (but not against driver capacity)
+  const totalAttendees = driverCount + totalPassengersExcludingDrivers + selfCount;
+
+  const hasEventCapacity = typeof event.capacity === "number" && event.capacity > 0;
+  const eventSpotsLeft = hasEventCapacity ? Math.max(event.capacity - totalAttendees, 0) : null;
+
+  const formattedStart =
+    event.start ? format(new Date(event.start), "EEE, MMM d, yyyy • p") : null;
+
+  // ---- Handlers ----
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
@@ -93,10 +113,11 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
         await RegisterForEvent(event.id, selectedDriver);
       }
       setIsRegistered(true);
+      await onUpdate(event.id);
     } catch (err) {
       console.error(err);
-      console.log("Registration failed.");
     }
+    setSelectedDriver(null);
   };
 
   const handleUnregister = async () => {
@@ -104,21 +125,13 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
     try {
       await UnregisterForEvent(event.id);
       setIsRegistered(false);
+      await onUpdate(event.id);
     } catch (err) {
       console.error(err);
-      console.log("Unregistration failed.");
     }
   };
 
-  const loginToRegister = () => {
-    // Optionally preserve return path:
-    // const next = typeof window !== "undefined" ? window.location.pathname : "/";
-    // router.push(`/login?next=${encodeURIComponent(next)}`);
-    router.push("/login");
-  };
-
-  const formattedStart =
-    event.start ? format(new Date(event.start), "EEE, MMM d, yyyy • p") : null;
+  const loginToRegister = () => router.push("/login");
 
   return (
     <div
@@ -135,7 +148,7 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
           <div className="flex items-start justify-between gap-3">
             <CardTitle className="text-xl tracking-tight">{event.title}</CardTitle>
             {event.type && (
-              <span className="shrink-0 h-5 px-2 text-xs inline-flex items-center rounded-full bg-red-600 text-white">
+              <span className="shrink-0 h-5 px-2 text-xs inline-flex items-center rounded-full bg-red-600 text-white capitalize">
                 {event.type}
               </span>
             )}
@@ -148,6 +161,7 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
         </CardHeader>
 
         <CardContent className="space-y-4">
+          {/* Meta */}
           <div className="flex items-center gap-2 text-zinc-300">
             <CalendarIcon className="size-4 text-red-500" />
             <span>{formattedStart ?? "TBD"}</span>
@@ -159,9 +173,23 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
             </div>
           )}
 
+          {/* Event capacity */}
+          {hasEventCapacity && (
+            <div className="flex items-center gap-2 text-xs text-zinc-400">
+              <Users className="h-3.5 w-3.5 text-red-500/90" />
+              <span>
+                <span className="text-[11px] rounded-full border border-zinc-700 bg-zinc-800/40 px-2 py-0.5 text-zinc-300">
+                  {eventSpotsLeft} spot{eventSpotsLeft === 1 ? "" : "s"} left
+                </span>
+              </span>
+            </div>
+          )}
+
           <Separator className="bg-zinc-800" />
 
+          {/* Content blocks */}
           {!user ? (
+            // Not signed in
             <div className="space-y-3">
               <p className="text-sm text-zinc-400">
                 Log in to register and view ride options.
@@ -174,28 +202,36 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
               </Button>
             </div>
           ) : isRegistered ? (
-            // Signed in + already registered
+            // Signed in + already registered => show rides + attendees
             <div className="space-y-4">
               <p className="text-sm text-zinc-400">Your ride & attendees</p>
+
               <div className="space-y-3">
-                {event.transport?.drivers.map((driver, driverId) => (
-                  <div key={driverId} className="rounded-lg border border-zinc-800 p-3">
-                    <div className="flex items-center justify-between">
-                      <Label className="font-medium text-zinc-200">{driver.name}</Label>
-                      <span className="text-xs text-zinc-400">
-                        {driver.passengers.length} passenger
-                        {driver.passengers.length !== 1 ? "s" : ""}
-                      </span>
+                {event.transport?.drivers.map((driver, idx) => {
+                  const pax = driver.passengers.filter(p => p !== driver.name);
+                  const spotsLeft = driver.capacity - driver.passengers.length;
+
+                  return (
+                    <div key={idx} className="rounded-lg border border-zinc-800 p-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="font-medium text-zinc-200">
+                          {driver.name}
+                        </Label>
+                        <span className="text-[11px] rounded-full border border-zinc-700 bg-zinc-800/40 px-2 py-0.5 text-zinc-300">
+                          {spotsLeft} spot{spotsLeft === 1 ? "" : "s"} left
+                        </span>
+                      </div>
+
+                      {pax.length > 0 && (
+                        <ul className="text-sm text-zinc-300 mt-2 list-disc ml-5">
+                          {pax.map((p, i) => (
+                            <li key={i}>{p}</li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
-                    {driver.passengers.length > 0 && (
-                      <ul className="text-sm text-zinc-300 mt-2 list-disc ml-5">
-                        {driver.passengers.map((p, i) => (
-                          <li key={i}>{p}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
 
                 {event.transport?.self?.length ? (
                   <div className="rounded-lg border border-zinc-800 p-3">
@@ -210,7 +246,7 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
               </div>
             </div>
           ) : (
-            // Signed in + not registered (form)
+            // Signed in + not registered => form
             <form onSubmit={handleSubmit} className="space-y-4">
               {user?.isDriver ? (
                 <div className="flex items-center gap-2">
@@ -259,7 +295,7 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
                         <Button
                           variant="outline"
                           data-empty={!pickupDate}
-                          className="w-full justify-start text-left font-normal border-zinc-800 text-zinc-100 hover:bg-zinc-800 data-[empty=true]:text-zinc-500"
+                          className="w-full justify-start text-left font-normal border-zinc-800 text-zinc-800 hover:bg-zinc-200 data-[empty=true]:text-zinc-500"
                           type="button"
                         >
                           <CalendarIcon className="mr-2 h-4 w-4 text-red-500" />
@@ -271,6 +307,8 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
                           mode="single"
                           selected={pickupDate}
                           onSelect={setPickupDate}
+                          disabled={{ before: new Date(), after: event.start }}
+                          className="text-zinc-100"
                         />
                       </PopoverContent>
                     </Popover>
@@ -305,18 +343,27 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
                         <SelectValue placeholder="Select pickup location" />
                       </SelectTrigger>
                       <SelectContent className="border-zinc-800 bg-zinc-900 text-zinc-100">
-                        {event.transport?.drivers.map((driver, id) => (
-                          <SelectItem key={id} value={driver.id}>
-                            {driver.location} (Driver: {driver.name})
-                          </SelectItem>
-                        ))}
+                        {event.transport?.drivers.map((driver, id) => {
+                          const spotsLeft = driver.capacity - driver.passengers.length;
+                          const isFull = spotsLeft <= 0;
+                          return (
+                            <SelectItem
+                              key={id}
+                              value={driver.id}
+                              disabled={isFull}
+                            >
+                              {driver.location} (Driver: {driver.name} •{" "}
+                              {isFull ? "Full" : `${spotsLeft} spot${spotsLeft === 1 ? "" : "s"} left`})
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   )}
                 </div>
               )}
 
-              <Button type="submit" className="w-full bg-red-600 text-white hover:bg-red-500">
+              <Button type="submit" className="w-full bg-red-600 text-white hover:bg-red-500" disabled={!hasEventCapacity}>
                 Register
               </Button>
             </form>
@@ -329,7 +376,7 @@ export function EventCard({ event, isOpen, onClose }: EventCardProps) {
               size="sm"
               variant="outline"
               onClick={handleUnregister}
-              className="border-zinc-700 text-zinc-100 hover:bg-zinc-800"
+              className="border-zinc-700 text-zinc-800 hover:bg-zinc-200"
             >
               Unregister
             </Button>

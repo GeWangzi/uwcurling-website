@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { GetEventList, CurlingEvent, LOADING_EVENT } from "@/lib/events";
 import { EventCard } from "@/components/ui/event-card";
 import {
@@ -36,25 +36,31 @@ export default function Home() {
   const [nextOpenHouse, setNextOpenHouse] = useState<CurlingEvent>(LOADING_EVENT);
   const [selected, setSelected] = useState<CurlingEvent | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const list = await GetEventList(3, {
-          upcomingOnly: true,
-          sort: "start_time",
-        });
-        setEvents(list || []);
-        const openHouseList = await GetEventList(1, {
-          types: ["open house"],
-          upcomingOnly: true,
-          sort: "start_time",
-        });
-        setNextOpenHouse(openHouseList[0] ?? null);
-      } catch (e) {
-        console.error("Failed to load events", e);
+  const reloadEvents = useCallback(async (focusId?: string) => {
+    try {
+      const list = await GetEventList(3, { upcomingOnly: true, sort: "start_time" });
+      setEvents(list || []);
+      const openHouseList = await GetEventList(1, {
+        types: ["open house"],
+        upcomingOnly: true,
+        sort: "start_time",
+      });
+      setNextOpenHouse(openHouseList[0] ?? null);
+
+      if (focusId) {
+        const fresh =
+          list.find(e => e.id === focusId) ||
+          (openHouseList ? openHouseList.find(e => e.id === focusId) : undefined);
+        if (fresh) setSelected(fresh);
       }
-    })();
+    } catch (e) {
+      console.error("Failed to load events", e);
+    }
   }, []);
+
+  useEffect(() => {
+    reloadEvents();
+  }, [reloadEvents]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-zinc-950 via-zinc-900 to-black text-zinc-100">
@@ -280,6 +286,7 @@ export default function Home() {
           event={selected}
           isOpen={!!selected}
           onClose={() => setSelected(null)}
+          onUpdate={reloadEvents}
         />
       </section>
 
